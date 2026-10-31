@@ -1,0 +1,10 @@
+/build/
+/.vs/
+/out/
+/CS2Panel/bin/
+/CS2Panel/obj/
+/CS2Tune/bin/
+/CS2Tune/obj/
+/tools/dump-output/
+*.log
+/release/
