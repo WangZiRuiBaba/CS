@@ -4,6 +4,6 @@
 
 打开方式：
 - CS2.native.sln — 仅 CS2_ESP（推荐编 C++）
-- CS2.sln — 仅 Panel/Tune，不含 CS2_ESP
+- CS2Panel/CS2Tune 的 CS2.sln 已移到独立仓库 CS2Tools，本仓库只有 CS2_ESP
 
 若仍提示 v100 / 不兼容：右键 CS2_ESP → 重定解决方案目标 → Windows SDK 10.x + 平台工具集 v143

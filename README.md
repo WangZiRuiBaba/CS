@@ -71,14 +71,17 @@ Debug 编译带控制台，启动时会打印：`Insert` 方框 · `PageUp` 骨�
 
 骨骼索引与连线见 [`src/sdk/bones.hpp`](src/sdk/bones.hpp)。游戏大更新后若骨骼不显示，可对照 cs2-dumper 检查 `m_modelState` 与骨骼数组偏移。
 
-## 图形界面（推荐）
+## 图形界面（独立仓库）
+
+界面与热调工具已拆到私有仓库 **CS2Tools**（`CS2Panel` / `CS2Tune`，.NET 8），本仓库只放 C++ 主程序：
 
 - **CS2Panel**：导出偏移、写入头文件、编译并启动 ESP
 - **CS2Tune**：锁头参数白话说明 + 热调，与构建面板分开
 
 ```powershell
-e:\WorkflowGame\CS\scripts\build-panel.ps1
-e:\WorkflowGame\CS\scripts\build-tune.ps1
+# CS2Tools 仓库内执行（输出到本仓库 build\Release\Panel|Tune）
+scripts\build-panel.ps1
+scripts\build-tune.ps1
 ```
 
 运行：`build\Release\Panel\CS2Panel.exe` · `build\Release\Tune\CS2Tune.exe`
@@ -106,8 +109,9 @@ e:\WorkflowGame\CS\scripts\build.ps1
 
 | 解决方案 | 内容 |
 |----------|------|
-| **`CS2.sln`** | 仅 **CS2Panel**、**CS2Tune**（.NET 8） |
-| **`CS2.native.sln`** | 仅 **CS2_ESP**（C++，`native\CS2_ESP.vcxproj`） |
+| **`CS2.native.sln`** | **CS2_ESP**（C++，`native\CS2_ESP.vcxproj`） |
+
+`CS2Panel` / `CS2Tune` 的 `CS2.sln` 已移到 **CS2Tools** 仓库。
 
 C++ 主程序需 VS **2022** +「使用 C++ 的桌面开发」+ **v143** + Windows SDK **10.0.x**。
 
@@ -116,7 +120,7 @@ C++ 主程序需 VS **2022** +「使用 C++ 的桌面开发」+ **v143** + Windo
 
 命令行/零售打包仍以 [`CMakeLists.txt`](CMakeLists.txt) + `scripts\build*.ps1` 为准。**新增 `.cpp` 时需同步改 `native\CS2_ESP.vcxproj` 与 CMakeLists。**
 
-面板/热调：打开 **`CS2.sln`** 或继续用脚本：
+面板/热调：在 **CS2Tools** 仓库执行 `scripts\build-panel.ps1` / `scripts\build-tune.ps1`（可用 `CS2_REPO_ROOT` 指向本仓库）。
 
 Debug 配置会定义 `CS2_ESP_CONSOLE`，便于查看附加与开关日志。
 
