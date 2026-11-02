@@ -106,6 +106,8 @@ scripts\build-tune.ps1
 e:\WorkflowGame\CS\scripts\build.ps1
 ```
 
+Windows 下也可直接双击仓库根目录的 **`build.bat`**（等同上面命令，已带 `-ExecutionPolicy Bypass`，结束打印产物路径与大小）。
+
 输出：`build\Release\CS2_ESP.exe`
 
 ### Visual Studio
