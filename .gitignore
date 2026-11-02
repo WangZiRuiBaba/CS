@@ -1,7 +1,6 @@
 /build/
 /.vs/
 /out/
-/tools/dump-output/
 *.log
 
 # Visual Studio 本地文件 / 解决方案升级日志
@@ -10,7 +9,5 @@
 /UpgradeLog*.htm
 /Backup/
 
-# 发行包产物（脚本输出）；文案保留在版本库
-/release/*
-!/release/使用说明.txt
-!/release/商品说明.txt
+# 发行包产物 / 文案 / 工具资产都已移到私有仓库 CS2Tools，这里只兜住本地残留
+/release/

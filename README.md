@@ -71,12 +71,15 @@ Debug 编译带控制台，启动时会打印：`Insert` 方框 · `PageUp` 骨�
 
 骨骼索引与连线见 [`src/sdk/bones.hpp`](src/sdk/bones.hpp)。游戏大更新后若骨骼不显示，可对照 cs2-dumper 检查 `m_modelState` 与骨骼数组偏移。
 
-## 图形界面（独立仓库）
+## 工具（独立私有仓库 CS2Tools）
 
-界面与热调工具已拆到私有仓库 **CS2Tools**（`CS2Panel` / `CS2Tune`，.NET 8），本仓库只放 C++ 主程序：
+界面、偏移 dump、打包脚本与对外文案都在私有仓库 **CS2Tools**，本仓库只放 C++ 主程序：
 
-- **CS2Panel**：导出偏移、写入头文件、编译并启动 ESP
-- **CS2Tune**：锁头参数白话说明 + 热调，与构建面板分开
+- **CS2Panel**（.NET 8 界面）：导出偏移、写入头文件、编译并启动 ESP
+- **CS2Tune**（.NET 8 界面）：锁头参数白话说明 + 热调，与构建面板分开
+- **`tools\cs2-dumper\`**：cs2-dumper 可执行文件；dump 结果写到 `tools\dump-output\`
+- **`scripts\`**：`build-panel.ps1` / `build-tune.ps1` / `build-retail.ps1` / `build-test-retail.ps1` / `build-trial-esp-5h.ps1` 等打包发布脚本
+- **`release\`**：`使用说明.txt` / `商品说明.txt` 与打包产物
 
 ```powershell
 # CS2Tools 仓库内执行（输出到本仓库 build\Release\Panel|Tune）
@@ -93,7 +96,7 @@ scripts\build-tune.ps1
 3. **一键：导出+写入+编译**（或分步 1→2→3）
 4. **启动透视** → 游戏内见 **[功能与快捷键](#功能与快捷键)**，`End` 退出
 
-导出偏移默认 **管理员运行 cs2-dumper**（勾选可关）。dump 结果在 `tools/dump-output/`。
+导出偏移默认 **管理员运行 cs2-dumper**（勾选可关）。dump 结果在 CS2Tools 仓库的 `tools\dump-output\`。
 
 ## 编译（命令行）
 
@@ -118,7 +121,7 @@ C++ 主程序需 VS **2022** +「使用 C++ 的桌面开发」+ **v143** + Windo
 1. 打开 **`CS2.native.sln`**
 2. 选 **Release \| x64** → 生成 **CS2_ESP** → `build\Release\CS2_ESP.exe`
 
-命令行/零售打包仍以 [`CMakeLists.txt`](CMakeLists.txt) + `scripts\build*.ps1` 为准。**新增 `.cpp` 时需同步改 `native\CS2_ESP.vcxproj` 与 CMakeLists。**
+命令行构建仍以 [`CMakeLists.txt`](CMakeLists.txt) + `scripts\build.ps1` 为准；零售 / 测试 / 试用打包脚本在 **CS2Tools** 的 `scripts\`。**新增 `.cpp` 时需同步改 `native\CS2_ESP.vcxproj` 与 CMakeLists。**
 
 面板/热调：在 **CS2Tools** 仓库执行 `scripts\build-panel.ps1` / `scripts\build-tune.ps1`（可用 `CS2_REPO_ROOT` 指向本仓库）。
 
@@ -126,10 +129,10 @@ Debug 配置会定义 `CS2_ESP_CONSOLE`，便于查看附加与开关日志。
 
 ## 更新偏移（手动）
 
-游戏大版本更新后偏移会失效。也可用面板自动更新；手动流程：
+游戏大版本更新后偏移会失效。也可用面板自动更新；手动流程（在 **CS2Tools** 仓库内）：
 
 1. 运行 `tools\cs2-dumper\cs2-dumper.exe -o tools\dump-output -f json`（CS2 已开、建议管理员）
-2. 用面板 **写入 offsets.hpp**，或对照 `tools/dump-output/` 修改 [`sdk/offsets/offsets.hpp`](sdk/offsets/offsets.hpp)
+2. 用面板 **写入 offsets.hpp**，或对照 `tools\dump-output\` 修改本仓库 [`sdk/offsets/offsets.hpp`](sdk/offsets/offsets.hpp)
 3. 重新编译
 
 面板写入时会包含 `CSkeletonInstance::m_modelState` 等骨骼所需字段。
@@ -146,4 +149,4 @@ Debug 配置会定义 `CS2_ESP_CONSOLE`，便于查看附加与开关日志。
 
 ## 对外宣传文案
 
-面向买家的名称见 [`release/使用说明.txt`](release/使用说明.txt)、[`release/商品说明.txt`](release/商品说明.txt)（全球雷达 / 体型绘制 / 磁吸装置）。程序内提示与按键说明仍以本 README 为准。
+面向买家的名称见 **CS2Tools** 仓库的 `release\使用说明.txt`、`release\商品说明.txt`（全球雷达 / 体型绘制 / 磁吸装置）。程序内提示与按键说明仍以本 README 为准。
