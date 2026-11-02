@@ -8,6 +8,3 @@
 *.suo
 /UpgradeLog*.htm
 /Backup/
-
-# 发行包产物 / 文案 / 工具资产都已移到私有仓库 CS2Tools，这里只兜住本地残留
-/release/

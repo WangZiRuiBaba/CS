@@ -1,3 +1,0 @@
-# 统一换行策略
-# cmd 对 LF-only 的批处理里 goto/label 解析不可靠，强制 CRLF 落盘
-*.bat text eol=crlf

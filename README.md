@@ -69,75 +69,36 @@ Debug 编译带控制台，启动时会打印：`Insert` 方框 · `PageUp` 骨�
 
 锁头默认参数见 [`src/aim/soft_aim.hpp`](src/aim/soft_aim.hpp) 的 `SoftAimConfig`。运行时可热调 `%LocalAppData%\CS2_ESP\runtime.ini`（推荐 **CS2Tune**，ESP 运行中也会自动重载）。
 
-骨骼索引与连线见 [`src/sdk/bones.hpp`](src/sdk/bones.hpp)。游戏大更新后若骨骼不显示，可对照 cs2-dumper 检查 `m_modelState` 与骨骼数组偏移。
+骨骼索引与连线见 [`src/sdk/bones.hpp`](src/sdk/bones.hpp)。游戏大更新后若骨骼不显示，用 CS2Tools 的 dump 结果核对 `m_modelState` 与骨骼数组偏移。
 
-## 工具（独立私有仓库 CS2Tools）
+## 构建与工具（独立私有仓库 CS2Tools）
 
-界面、偏移 dump、打包脚本与对外文案都在私有仓库 **CS2Tools**，本仓库只放 C++ 主程序：
+本仓库只放 C++ 主程序（`src/`、`sdk/`、`native/`、`CMakeLists.txt`、`CS2.native.sln`）。构建脚本、图形面板、偏移 dump、打包与对外文案全部在私有仓库 **CS2Tools**：
 
-- **CS2Panel**（.NET 8 界面）：导出偏移、写入头文件、编译并启动 ESP
-- **CS2Tune**（.NET 8 界面）：锁头参数白话说明 + 热调，与构建面板分开
-- **`tools\cs2-dumper\`**：cs2-dumper 可执行文件；dump 结果写到 `tools\dump-output\`
-- **`scripts\`**：`build-panel.ps1` / `build-tune.ps1` / `build-retail.ps1` / `build-test-retail.ps1` / `build-trial-esp-5h.ps1` 等打包发布脚本
-- **`release\`**：`使用说明.txt` / `商品说明.txt` 与打包产物
+- `build.bat` / `scripts\build.ps1`：一键构建 `build\Release\CS2_ESP.exe`
+- `scripts\build-panel.ps1` / `build-tune.ps1`：出 `build\Release\Panel` / `build\Release\Tune`
+- `tools\cs2-dumper\`：偏移 dump；`release\`：对外文案与打包产物
 
-```powershell
-# CS2Tools 仓库内执行（输出到本仓库 build\Release\Panel|Tune）
-scripts\build-panel.ps1
-scripts\build-tune.ps1
-```
+CS2Tools 默认找与本仓库并列的 `..\CS`，其它位置用环境变量 `CS2_REPO_ROOT` 指向本仓库根目录。
 
-运行：`build\Release\Panel\CS2Panel.exe` · `build\Release\Tune\CS2Tune.exe`
+## 编译（Visual Studio）
 
-面板步骤：
-
-1. 先启动 CS2（主菜单即可）
-2. **检查环境**
-3. **一键：导出+写入+编译**（或分步 1→2→3）
-4. **启动透视** → 游戏内见 **[功能与快捷键](#功能与快捷键)**，`End` 退出
-
-导出偏移默认 **管理员运行 cs2-dumper**（勾选可关）。dump 结果在 CS2Tools 仓库的 `tools\dump-output\`。
-
-## 编译（命令行）
-
-需要 Visual Studio 2022（含 C++ 桌面开发）与 CMake 3.16+：
-
-```powershell
-e:\WorkflowGame\CS\scripts\build.ps1
-```
-
-Windows 下也可直接双击仓库根目录的 **`build.bat`**（等同上面命令，已带 `-ExecutionPolicy Bypass`，结束打印产物路径与大小）。
-
-输出：`build\Release\CS2_ESP.exe`
-
-### Visual Studio
+C++ 主程序需 VS **2022** +「使用 C++ 的桌面开发」+ **v143** + Windows SDK **10.0.x**。
 
 | 解决方案 | 内容 |
 |----------|------|
 | **`CS2.native.sln`** | **CS2_ESP**（C++，`native\CS2_ESP.vcxproj`） |
 
-`CS2Panel` / `CS2Tune` 的 `CS2.sln` 已移到 **CS2Tools** 仓库。
-
-C++ 主程序需 VS **2022** +「使用 C++ 的桌面开发」+ **v143** + Windows SDK **10.0.x**。
-
 1. 打开 **`CS2.native.sln`**
 2. 选 **Release \| x64** → 生成 **CS2_ESP** → `build\Release\CS2_ESP.exe`
 
-命令行构建仍以 [`CMakeLists.txt`](CMakeLists.txt) + `scripts\build.ps1` 为准；零售 / 测试 / 试用打包脚本在 **CS2Tools** 的 `scripts\`。**新增 `.cpp` 时需同步改 `native\CS2_ESP.vcxproj` 与 CMakeLists。**
-
-面板/热调：在 **CS2Tools** 仓库执行 `scripts\build-panel.ps1` / `scripts\build-tune.ps1`（可用 `CS2_REPO_ROOT` 指向本仓库）。
+命令行构建与打包（`build.bat`、`scripts\build*.ps1`）在 **CS2Tools**；本仓库的 [`CMakeLists.txt`](CMakeLists.txt) 只描述目标本身。**新增 `.cpp` 时需同步改 `native\CS2_ESP.vcxproj` 与 CMakeLists。**
 
 Debug 配置会定义 `CS2_ESP_CONSOLE`，便于查看附加与开关日志。
 
-## 更新偏移（手动）
+## 更新偏移
 
-游戏大版本更新后偏移会失效。也可用面板自动更新；手动流程（在 **CS2Tools** 仓库内）：
-
-1. 运行 `tools\cs2-dumper\cs2-dumper.exe -o tools\dump-output -f json`（CS2 已开、建议管理员）
-2. 用面板 **写入 offsets.hpp**，或对照 `tools\dump-output\` 修改本仓库 [`sdk/offsets/offsets.hpp`](sdk/offsets/offsets.hpp)
-3. 重新编译
-
-面板写入时会包含 `CSkeletonInstance::m_modelState` 等骨骼所需字段。
+游戏大版本更新后偏移会失效：用 **CS2Tools** 导出并写入 [`sdk/offsets/offsets.hpp`](sdk/offsets/offsets.hpp)（含 `CSkeletonInstance::m_modelState` 等骨骼字段），再重新编译。
 
 ## 使用
 
@@ -148,7 +109,3 @@ Debug 配置会定义 `CS2_ESP_CONSOLE`，便于查看附加与开关日志。
 ## 窗口查找
 
 默认按窗口标题 `Counter-Strike 2` 查找；失败时按进程 PID 找最大客户区窗口，再尝试类名 `SDL_app`。
-
-## 对外宣传文案
-
-面向买家的名称见 **CS2Tools** 仓库的 `release\使用说明.txt`、`release\商品说明.txt`（全球雷达 / 体型绘制 / 磁吸装置）。程序内提示与按键说明仍以本 README 为准。
