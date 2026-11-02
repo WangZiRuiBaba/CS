@@ -7,4 +7,14 @@
 /CS2Tune/obj/
 /tools/dump-output/
 *.log
-/release/
+
+# Visual Studio 本地文件 / 解决方案升级日志
+*.user
+*.suo
+/UpgradeLog*.htm
+/Backup/
+
+# 发行包产物（脚本输出）；文案保留在版本库
+/release/*
+!/release/使用说明.txt
+!/release/商品说明.txt

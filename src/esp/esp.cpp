@@ -1,6 +1,8 @@
 #include "esp/esp.hpp"
 
+#ifndef CS2_ESP_ESP_ONLY
 #include "aim/soft_aim.hpp"
+#endif
 #include "config/runtime_config.hpp"
 #include "render/color_palette.hpp"
 #include "render/color_picker_panel.hpp"
@@ -31,11 +33,15 @@ bool left_click_edge() {
 
 EspLoop::EspLoop(memory::Process& process) : process_(process), entities_(process) {
     config::write_default_runtime_config_if_missing();
+#ifndef CS2_ESP_ESP_ONLY
     config::try_reload_runtime_config(aim_config_, runtime_config_write_time_);
+#endif
 }
 
 void EspLoop::poll_runtime_config() {
+#ifndef CS2_ESP_ESP_ONLY
     config::try_reload_runtime_config(aim_config_, runtime_config_write_time_);
+#endif
 }
 
 void EspLoop::clear_display_cache() {
@@ -74,6 +80,52 @@ void EspLoop::toggle_skeleton() {
 #endif
 }
 
+void EspLoop::toggle_utility_suppress() {
+    if constexpr (!kUtilitySuppressFeatureEnabled)
+        return;
+    utility_suppressed_ = !utility_suppressed_;
+    show_mode_toast(utility_suppressed_ ? L"\u70df\u96fe/\u95ea\u5149: \u5ffd\u89c6"
+                                        : L"\u70df\u96fe/\u95ea\u5149: \u6b63\u5e38");
+}
+
+bool EspLoop::needs_write_access(const bool aim_held) const {
+    if constexpr (kUtilitySuppressFeatureEnabled) {
+        if (utility_suppressed_)
+            return true;
+    }
+#ifndef CS2_ESP_ESP_ONLY
+    if (aim_toggled_ || aim_held)
+        return true;
+#else
+    (void)aim_held;
+#endif
+    return false;
+}
+
+bool EspLoop::needs_write_access_from_input() const {
+#ifndef CS2_ESP_ESP_ONLY
+    const bool aim_held = (GetAsyncKeyState(aim_config_.aim_key_vk) & 0x8000) != 0;
+    return needs_write_access(aim_held);
+#else
+    return needs_write_access(false);
+#endif
+}
+
+bool EspLoop::wants_scheduled_handle_refresh() const {
+    if (enabled_ || skeleton_enabled_ || color_picker_visible_ || toast_active())
+        return true;
+    if constexpr (kUtilitySuppressFeatureEnabled) {
+        if (utility_suppressed_)
+            return true;
+    }
+#ifndef CS2_ESP_ESP_ONLY
+    if (aim_toggled_)
+        return true;
+#endif
+    return false;
+}
+
+#ifndef CS2_ESP_ESP_ONLY
 void EspLoop::toggle_aim() {
     aim_toggled_ = !aim_toggled_;
     show_mode_toast(aim_toggled_ ? L"\u8f85\u52a9\u7784\u51c6: \u5f00" : L"\u8f85\u52a9\u7784\u51c6: \u5173");
@@ -81,12 +133,15 @@ void EspLoop::toggle_aim() {
     std::cout << "[Aim] Memory lock " << (aim_toggled_ ? "ON" : "OFF") << '\n';
 #endif
 }
+#endif
 
 render::OverlayHud EspLoop::build_hud() const {
     render::OverlayHud hud{};
     hud.esp_enabled = enabled_;
     hud.skeleton_enabled = skeleton_enabled_;
+#ifndef CS2_ESP_ESP_ONLY
     hud.aim_toggled = aim_toggled_;
+#endif
     hud.color_picker_visible = color_picker_visible_;
     hud.color_picker_tab = custom_color_.tab;
     hud.color_custom = custom_color_;
@@ -94,8 +149,16 @@ render::OverlayHud EspLoop::build_hud() const {
     hud.skeleton_color = skeleton_color_;
     hud.toast = toast_message_;
     hud.toast_until = toast_until_;
+#ifdef CS2_ESP_ESP_ONLY
+    hud.help_caption =
+        L"Insert \u65b9\u6846 \u00b7 PageUp \u9aa8\u9abc \u00b7 F7 \u989c\u8272 \u00b7 End \u9000\u51fa";
+#else
     hud.help_caption =
         L"Insert \u65b9\u6846 \u00b7 PageUp \u9aa8\u9abc \u00b7 F7 \u989c\u8272 \u00b7 Home \u7784\u51c6 \u00b7 End \u9000\u51fa";
+#endif
+    if constexpr (kUtilitySuppressFeatureEnabled) {
+        hud.help_caption += L" \u00b7 PageDown \u70df\u95ea";
+    }
     return hud;
 }
 
@@ -227,6 +290,17 @@ void EspLoop::tick(render::Overlay& overlay, bool game_active) {
         return;
     }
 
+    if constexpr (kUtilitySuppressFeatureEnabled) {
+        if (utility_suppressed_) {
+            process_.ensure_write_access();
+            entities_.suppress_flash_and_smoke();
+        }
+    }
+    /*
+     * 烟闪屏蔽（Page Down）已关闭：实现见 EntitySystem::suppress_flash_and_smoke()。
+     * 将 esp.hpp 中 kUtilitySuppressFeatureEnabled 改为 true 并恢复 main.cpp 快捷键即可启用。
+     */
+
     const std::uintptr_t local_pawn = entities_.local_pawn();
     if (local_pawn)
         last_local_pawn_ = local_pawn;
@@ -237,8 +311,13 @@ void EspLoop::tick(render::Overlay& overlay, bool game_active) {
         return;
     }
 
+#ifdef CS2_ESP_ESP_ONLY
+    const bool aim_held = false;
+    const bool aim_active = false;
+#else
     const bool aim_held = (GetAsyncKeyState(aim_config_.aim_key_vk) & 0x8000) != 0;
     const bool aim_active = aim_toggled_ || aim_held;
+#endif
 
     poll_color_picker_input(overlay);
 
@@ -273,9 +352,11 @@ void EspLoop::tick(render::Overlay& overlay, bool game_active) {
     const bool skeleton_on = skeleton_enabled_;
     // Camera moves every frame; pawn positions do not. Reproject cached feet/head
     // each tick, and re-read entities about 30 times a second. Aim still reads every tick.
+    const std::chrono::milliseconds collect_interval =
+        target_cache_.empty() ? std::chrono::milliseconds(100) : std::chrono::milliseconds(32);
     const bool entity_refresh_due =
         last_full_collect_.time_since_epoch().count() == 0 ||
-        now - last_full_collect_ >= std::chrono::milliseconds(32);
+        now - last_full_collect_ >= collect_interval;
     if (esp_on || skeleton_on || aim_active) {
         if (aim_active || entity_refresh_due || target_cache_.empty()) {
             std::vector<sdk::EspTarget> fresh;
@@ -308,10 +389,13 @@ void EspLoop::tick(render::Overlay& overlay, bool game_active) {
     if (enabled_ || skeleton_on || color_picker_visible_ || toast_active())
         overlay.render(target_cache_, hud);
 
+#ifndef CS2_ESP_ESP_ONLY
     if (aim_active) {
+        process_.ensure_write_access();
         aim::tick(process_, entities_, target_cache_, aim_active, overlay.width(),
                   overlay.height(), aim_config_);
     }
+#endif
 }
 
 } // namespace esp

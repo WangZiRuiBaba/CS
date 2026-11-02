@@ -43,6 +43,16 @@ inline constexpr std::ptrdiff_t m_iItemDefinitionIndex = 442;
 inline constexpr std::ptrdiff_t v_angle = 5032;
 inline constexpr std::ptrdiff_t m_vecCsViewPunchAngle = 72;
 inline constexpr std::ptrdiff_t m_unpredictableBaseAngle = 164;
+inline constexpr std::ptrdiff_t m_flFlashBangTime = 5372;
+inline constexpr std::ptrdiff_t m_flFlashScreenshotAlpha = 5376;
+inline constexpr std::ptrdiff_t m_flFlashOverlayAlpha = 5380;
+inline constexpr std::ptrdiff_t m_flFlashMaxAlpha = 5388;
+inline constexpr std::ptrdiff_t m_flFlashDuration = 5392;
+inline constexpr std::ptrdiff_t m_nSmokeEffectTickBegin = 4960;
+inline constexpr std::ptrdiff_t m_bDidSmokeEffect = 4964;
+inline constexpr std::ptrdiff_t m_vSmokeDetonationPos = 4984;
+inline constexpr std::ptrdiff_t m_nVoxelFrameDataSize = 5024;
+inline constexpr std::ptrdiff_t m_bSmokeVolumeDataReceived = 5033;
 
 } // namespace schemas
 

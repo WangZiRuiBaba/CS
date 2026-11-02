@@ -445,6 +445,11 @@ bool EntitySystem::try_add_enemy_pawn(std::uintptr_t pawn, std::uintptr_t local,
             if (lx * lx + ly * ly + lz * lz > max_len * max_len)
                 continue;
 
+            // Both ends at foot height and apart: that is a line tying the feet together.
+            const float horiz = std::sqrt(lx * lx + ly * ly);
+            if (std::fabs(a->z - feet->z) < 14.f && std::fabs(b->z - feet->z) < 14.f && horiz > 8.f)
+                continue;
+
             Vec2 screen_a{};
             Vec2 screen_b{};
             if (!world_to_screen(*a, screen_a, vm, screen_w, screen_h))
@@ -467,6 +472,71 @@ bool EntitySystem::try_add_enemy_pawn(std::uintptr_t pawn, std::uintptr_t local,
     if (stats)
         ++stats->drawn;
     return true;
+}
+
+void EntitySystem::suppress_flash_and_smoke() const {
+    if (const auto pawn = local_pawn()) {
+        const auto alpha = proc_.read<float>(pawn + offsets::schemas::m_flFlashOverlayAlpha).value_or(0.f);
+        const auto duration = proc_.read<float>(pawn + offsets::schemas::m_flFlashDuration).value_or(0.f);
+        if (alpha > 0.01f || duration > 0.01f) {
+            const float zero = 0.f;
+            proc_.write(pawn + offsets::schemas::m_flFlashOverlayAlpha, zero);
+            proc_.write(pawn + offsets::schemas::m_flFlashMaxAlpha, zero);
+            proc_.write(pawn + offsets::schemas::m_flFlashDuration, zero);
+            proc_.write(pawn + offsets::schemas::m_flFlashBangTime, zero);
+            proc_.write(pawn + offsets::schemas::m_flFlashScreenshotAlpha, zero);
+        }
+    }
+
+    static ULONGLONG last_scan = 0;
+    static std::vector<std::uintptr_t> smokes;
+    const ULONGLONG now = GetTickCount64();
+    const auto client = proc_.client_base();
+    if (!client)
+        return;
+
+    // Projectiles live above the player slots. One pass a second, only chunk 0,
+    // so this does not hitch the frame the way a 1024-entity scan did.
+    if (now - last_scan >= 1000) {
+        last_scan = now;
+        smokes.erase(std::remove_if(smokes.begin(), smokes.end(),
+                                    [&](std::uintptr_t ent) { return !pawn_origin(ent); }),
+                     smokes.end());
+
+        EntityListCache list(proc_, client);
+        for (int i = 64; i < 512; ++i) {
+            const auto ent = list.get(i);
+            if (!ent)
+                continue;
+            if (std::find(smokes.begin(), smokes.end(), ent) != smokes.end())
+                continue;
+            const auto did = proc_.read<std::uint8_t>(ent + offsets::schemas::m_bDidSmokeEffect);
+            if (!did || *did == 0)
+                continue;
+            const auto tick = proc_.read<int>(ent + offsets::schemas::m_nSmokeEffectTickBegin);
+            if (!tick || *tick <= 0)
+                continue;
+            const auto det = proc_.read<Vec3>(ent + offsets::schemas::m_vSmokeDetonationPos);
+            const auto origin = pawn_origin(ent);
+            if (!det || !origin || !std::isfinite(det->x) || std::fabs(det->x) > 20000.f)
+                continue;
+            const float dx = det->x - origin->x;
+            const float dy = det->y - origin->y;
+            const float dz = det->z - origin->z;
+            if (dx * dx + dy * dy + dz * dz > 400.f * 400.f)
+                continue;
+            smokes.push_back(ent);
+        }
+    }
+
+    const std::uint8_t zero_b = 0;
+    const int zero_i = 0;
+    for (const std::uintptr_t ent : smokes) {
+        proc_.write(ent + offsets::schemas::m_bDidSmokeEffect, zero_b);
+        proc_.write(ent + offsets::schemas::m_bSmokeVolumeDataReceived, zero_b);
+        proc_.write(ent + offsets::schemas::m_nVoxelFrameDataSize, zero_i);
+        proc_.write(ent + offsets::schemas::m_nSmokeEffectTickBegin, zero_i);
+    }
 }
 
 std::vector<EspTarget> EntitySystem::collect_enemies(const ViewMatrix& vm, int screen_w,

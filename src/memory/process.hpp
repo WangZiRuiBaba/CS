@@ -17,13 +17,18 @@ public:
     Process(const Process&) = delete;
     Process& operator=(const Process&) = delete;
 
-    bool attach(const std::wstring& process_name);
+    bool attach(const std::wstring& process_name, bool request_write_access = false);
+    bool ensure_write_access();
+    bool downgrade_to_read_only();
     bool refresh_handle();
     void detach();
 
     [[nodiscard]] bool is_attached() const { return handle_ != nullptr; }
+    [[nodiscard]] bool has_write_access() const { return write_access_; }
     [[nodiscard]] DWORD process_id() const { return pid_; }
     [[nodiscard]] std::uintptr_t client_base() const { return client_base_; }
+    [[nodiscard]] bool last_io_failed() const { return last_io_failed_; }
+    void clear_io_failed() { last_io_failed_ = false; }
 
     template <typename T>
     std::optional<T> read(std::uintptr_t address) const {
@@ -56,11 +61,16 @@ public:
     }
 
 private:
+    DWORD access_flags(bool write) const;
+    bool open_handle(bool write);
     std::uintptr_t get_module_base(const std::wstring& module_name) const;
+    void note_io_result(bool ok) const;
 
     HANDLE handle_{nullptr};
     DWORD pid_{0};
     std::uintptr_t client_base_{0};
+    bool write_access_{false};
+    mutable bool last_io_failed_{false};
 };
 
 } // namespace memory

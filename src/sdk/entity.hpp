@@ -80,6 +80,9 @@ public:
                                                          int screen_h, bool include_skeleton,
                                                          EspDebugStats* stats = nullptr) const;
 
+    // 烟闪写内存；是否调用由 esp.hpp 的 kUtilitySuppressFeatureEnabled 控制。
+    void suppress_flash_and_smoke() const;
+
 private:
     [[nodiscard]] std::uintptr_t entity_system() const;
     [[nodiscard]] std::uintptr_t entity_from_index(int index) const;

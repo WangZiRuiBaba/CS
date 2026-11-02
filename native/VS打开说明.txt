@@ -1,0 +1,9 @@
+根因：若未写 PlatformToolset，本机 MSBuild 会落到 v100，VS 显示「不兼容 / 需要 VS2010 工具」。
+
+已固定 native\CS2_ESP.vcxproj 使用 v143 + Windows SDK 10.0。
+
+打开方式：
+- CS2.native.sln — 仅 CS2_ESP（推荐编 C++）
+- CS2.sln — 仅 Panel/Tune，不含 CS2_ESP
+
+若仍提示 v100 / 不兼容：右键 CS2_ESP → 重定解决方案目标 → Windows SDK 10.x + 平台工具集 v143

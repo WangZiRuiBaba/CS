@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\aim">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\config">
+      <UniqueIdentifier>{67DA6AB6-F0-4627-A9-3D-243107A878BD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\esp">
+      <UniqueIdentifier>{2DAB880B-99B4-4c88-835F-7A8D4A8B2C2E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\license">
+      <UniqueIdentifier>{6E3804B2-8F2A-4B88-9F2A-2A2A2A2A2A2A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\memory">
+      <UniqueIdentifier>{1F347A2B-8F2A-4B88-9F2A-2B2B2B2B2B2B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render">
+      <UniqueIdentifier>{3F347A2B-8F2A-4B88-9F2A-3C3C3C3C3C3C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sdk">
+      <UniqueIdentifier>{4F347A2B-8F2A-4B88-9F2A-4D4D4D4D4D4D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\stealth">
+      <UniqueIdentifier>{5F347A2B-8F2A-4B88-9F2A-5E5E5E5E5E5E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\main.cpp"><Filter>src</Filter></ClCompile>
+    <ClCompile Include="..\src\license\expiry.cpp"><Filter>src\license</Filter></ClCompile>
+    <ClCompile Include="..\src\license\machine_id.cpp"><Filter>src\license</Filter></ClCompile>
+    <ClCompile Include="..\src\memory\process.cpp"><Filter>src\memory</Filter></ClCompile>
+    <ClCompile Include="..\src\sdk\entity.cpp"><Filter>src\sdk</Filter></ClCompile>
+    <ClCompile Include="..\src\esp\esp.cpp"><Filter>src\esp</Filter></ClCompile>
+    <ClCompile Include="..\src\render\overlay.cpp"><Filter>src\render</Filter></ClCompile>
+    <ClCompile Include="..\src\render\color_palette.cpp"><Filter>src\render</Filter></ClCompile>
+    <ClCompile Include="..\src\render\color_picker_panel.cpp"><Filter>src\render</Filter></ClCompile>
+    <ClCompile Include="..\src\stealth\stealth.cpp"><Filter>src\stealth</Filter></ClCompile>
+    <ClCompile Include="..\src\config\runtime_config.cpp"><Filter>src\config</Filter></ClCompile>
+    <ClCompile Include="..\src\aim\soft_aim.cpp"><Filter>src\aim</Filter></ClCompile>
+  </ItemGroup>
+</Project>

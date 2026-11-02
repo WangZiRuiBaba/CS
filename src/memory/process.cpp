@@ -31,14 +31,37 @@ NtWriteVirtualMemoryFn nt_write_virtual_memory() {
     return fn;
 }
 
-constexpr DWORD kProcessAccess =
-    PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_LIMITED_INFORMATION;
+bool is_invalid_handle_error() {
+    const DWORD err = GetLastError();
+    return err == ERROR_INVALID_HANDLE || err == ERROR_ACCESS_DENIED || err == ERROR_PARTIAL_COPY;
+}
 
 } // namespace
 
 Process::~Process() { detach(); }
 
-bool Process::attach(const std::wstring& process_name) {
+DWORD Process::access_flags(const bool write) const {
+    DWORD flags = PROCESS_VM_READ | PROCESS_QUERY_LIMITED_INFORMATION;
+    if (write)
+        flags |= PROCESS_VM_WRITE;
+    return flags;
+}
+
+bool Process::open_handle(const bool write) {
+    if (pid_ == 0)
+        return false;
+
+    if (handle_) {
+        CloseHandle(handle_);
+        handle_ = nullptr;
+    }
+
+    handle_ = OpenProcess(access_flags(write), FALSE, pid_);
+    write_access_ = write && handle_ != nullptr;
+    return handle_ != nullptr;
+}
+
+bool Process::attach(const std::wstring& process_name, const bool request_write_access) {
     detach();
 
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -58,13 +81,15 @@ bool Process::attach(const std::wstring& process_name) {
             continue;
 
         pid_ = entry.th32ProcessID;
-        handle_ = OpenProcess(kProcessAccess, FALSE, pid_);
         break;
     } while (Process32NextW(snap, &entry));
 
     CloseHandle(snap);
 
-    if (!handle_)
+    if (pid_ == 0)
+        return false;
+
+    if (!open_handle(request_write_access))
         return false;
 
     client_base_ = get_module_base(L"client.dll");
@@ -73,20 +98,43 @@ bool Process::attach(const std::wstring& process_name) {
         return false;
     }
 
+    last_io_failed_ = false;
     return true;
+}
+
+bool Process::ensure_write_access() {
+    if (!pid_)
+        return false;
+    if (write_access_ && handle_)
+        return true;
+    if (!open_handle(true))
+        return false;
+    if (!client_base_)
+        client_base_ = get_module_base(L"client.dll");
+    return client_base_ != 0;
+}
+
+bool Process::downgrade_to_read_only() {
+    if (!pid_)
+        return false;
+    if (!write_access_)
+        return handle_ != nullptr;
+    if (!open_handle(false))
+        return false;
+    if (!client_base_)
+        client_base_ = get_module_base(L"client.dll");
+    return client_base_ != 0;
 }
 
 bool Process::refresh_handle() {
     if (pid_ == 0)
         return false;
-
-    if (handle_) {
-        CloseHandle(handle_);
-        handle_ = nullptr;
-    }
-
-    handle_ = OpenProcess(kProcessAccess, FALSE, pid_);
-    return handle_ != nullptr;
+    const bool want_write = write_access_;
+    if (!open_handle(want_write))
+        return false;
+    if (!client_base_)
+        client_base_ = get_module_base(L"client.dll");
+    return client_base_ != 0;
 }
 
 void Process::detach() {
@@ -96,29 +144,49 @@ void Process::detach() {
     }
     pid_ = 0;
     client_base_ = 0;
+    write_access_ = false;
+    last_io_failed_ = false;
+}
+
+void Process::note_io_result(const bool ok) const {
+    if (ok) {
+        last_io_failed_ = false;
+        return;
+    }
+    if (is_invalid_handle_error())
+        last_io_failed_ = true;
 }
 
 bool Process::read_raw(std::uintptr_t address, void* buffer, std::size_t size) const {
-    if (!handle_ || !address || !buffer || size == 0)
+    if (!handle_ || !address || !buffer || size == 0) {
+        note_io_result(false);
         return false;
+    }
 
     SIZE_T bytes_read = 0;
 
     if (const auto nt_read = nt_read_virtual_memory()) {
         const LONG status =
             nt_read(handle_, reinterpret_cast<PVOID>(address), buffer, size, &bytes_read);
-        if (status >= 0 && bytes_read == size)
+        if (status >= 0 && bytes_read == size) {
+            note_io_result(true);
             return true;
+        }
+        SetLastError(static_cast<DWORD>(status));
     }
 
-    return ReadProcessMemory(handle_, reinterpret_cast<LPCVOID>(address), buffer, size,
-                             &bytes_read) != 0 &&
-           bytes_read == size;
+    const BOOL ok = ReadProcessMemory(handle_, reinterpret_cast<LPCVOID>(address), buffer, size,
+                                      &bytes_read) != 0 &&
+                    bytes_read == size;
+    note_io_result(ok);
+    return ok;
 }
 
 bool Process::write_raw(std::uintptr_t address, const void* buffer, std::size_t size) const {
-    if (!handle_ || !address || !buffer || size == 0)
+    if (!handle_ || !write_access_ || !address || !buffer || size == 0) {
+        note_io_result(false);
         return false;
+    }
 
     SIZE_T bytes_written = 0;
 
@@ -126,13 +194,18 @@ bool Process::write_raw(std::uintptr_t address, const void* buffer, std::size_t 
         const LONG status =
             nt_write(handle_, reinterpret_cast<PVOID>(address),
                      const_cast<PVOID>(static_cast<const void*>(buffer)), size, &bytes_written);
-        if (status >= 0 && bytes_written == size)
+        if (status >= 0 && bytes_written == size) {
+            note_io_result(true);
             return true;
+        }
+        SetLastError(static_cast<DWORD>(status));
     }
 
-    return WriteProcessMemory(handle_, reinterpret_cast<LPVOID>(address), buffer, size,
-                            &bytes_written) != 0 &&
-           bytes_written == size;
+    const BOOL ok = WriteProcessMemory(handle_, reinterpret_cast<LPVOID>(address), buffer, size,
+                                       &bytes_written) != 0 &&
+                    bytes_written == size;
+    note_io_result(ok);
+    return ok;
 }
 
 std::uintptr_t Process::get_module_base(const std::wstring& module_name) const {

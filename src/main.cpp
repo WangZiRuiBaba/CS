@@ -130,7 +130,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     FILE* fp = nullptr;
     freopen_s(&fp, "CONOUT$", "w", stdout);
     freopen_s(&fp, "CONOUT$", "w", stderr);
+#ifdef CS2_ESP_ESP_ONLY
+    std::cout << "Insert box ESP | PageUp skeleton | End quit\n";
+#else
     std::cout << "Insert box ESP | PageUp skeleton | Home toggle memory aim | Hold XBUTTON1 aim | End quit\n";
+#endif
 #endif
 
     memory::Process process;
@@ -159,12 +163,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     bool prev_game_active = false;
     bool saw_game_active = false;
     auto last_attach_check = clock::now();
-    auto last_handle_refresh = clock::now();
     auto last_license_check = clock::now();
     auto last_game_foreground = clock::now();
     auto next_frame = clock::now();
 
     std::mt19937 rng(static_cast<unsigned>(GetTickCount64() ^ GetCurrentProcessId()));
+    std::uniform_int_distribution<int> handle_refresh_sec(38, 52);
+    auto next_handle_refresh =
+        clock::now() + std::chrono::seconds(handle_refresh_sec(rng));
 
     const auto ignore_end_until = clock::now() + std::chrono::seconds(3);
 
@@ -178,8 +184,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         if (key_pressed_once(VK_PRIOR))
             esp_loop.toggle_skeleton();
 
+        // Page Down 烟闪屏蔽：功能已关闭，实现保留在 entity.cpp（kUtilitySuppressFeatureEnabled）
+        // if (key_pressed_once(VK_NEXT))
+        //     esp_loop.toggle_utility_suppress();
+
+#ifndef CS2_ESP_ESP_ONLY
         if (key_pressed_once(esp_loop.aim_toggle_vk()))
             esp_loop.toggle_aim();
+#endif
 
         if (key_pressed_once(VK_F7))
             esp_loop.toggle_color_picker(overlay);
@@ -196,11 +208,6 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
             if (!process.is_attached())
                 attach_loop(process);
             last_attach_check = now;
-        }
-
-        if (now - last_handle_refresh > std::chrono::seconds(45)) {
-            process.refresh_handle();
-            last_handle_refresh = now;
         }
 
 #ifdef CS2_ESP_RETAIL
@@ -223,6 +230,20 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
             cs2_pid != 0 &&
             (cs2_active || warmup || now - last_game_foreground < kForegroundHideDelay);
 
+        if (esp_loop.needs_write_access_from_input())
+            process.ensure_write_access();
+        else
+            process.downgrade_to_read_only();
+
+        const bool refresh_due_io = process.last_io_failed();
+        const bool refresh_due_timer =
+            game_active && esp_loop.wants_scheduled_handle_refresh() && now >= next_handle_refresh;
+        if ((refresh_due_io || refresh_due_timer) && process.is_attached()) {
+            process.refresh_handle();
+            process.clear_io_failed();
+            next_handle_refresh = now + std::chrono::seconds(handle_refresh_sec(rng));
+        }
+
         if (game_active && saw_game_active && !prev_game_active) {
             esp_loop.show_hint(
                 L"\u5df2\u5207\u56de CS2\uff0c\u663e\u793a\u5df2\u6062\u590d\uff08\u672a\u9000\u51fa\uff0cEnd \u53ef\u5173\u95ed\u7a0b\u5e8f\uff09",
@@ -236,12 +257,16 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
             esp_loop.tick(overlay, true);
 
             const bool esp_drawing = esp_loop.enabled() || esp_loop.skeleton_enabled();
+#ifndef CS2_ESP_ESP_ONLY
             const bool combat =
                 esp_loop.aim_toggled() ||
                 (GetAsyncKeyState(VK_XBUTTON1) & 0x8000) != 0 ||
                 (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
             const auto period =
                 combat ? kCombatFramePeriod : (esp_drawing ? kEspFramePeriod : kActiveFramePeriod);
+#else
+            const auto period = esp_drawing ? kEspFramePeriod : kActiveFramePeriod;
+#endif
             next_frame += stealth::jittered_frame_period(period, rng);
             if (next_frame > now)
                 std::this_thread::sleep_until(next_frame);

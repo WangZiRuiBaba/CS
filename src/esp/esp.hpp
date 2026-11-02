@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef CS2_ESP_ESP_ONLY
 #include "aim/soft_aim.hpp"
+#endif
 #include "memory/process.hpp"
 
 #include <Windows.h>
@@ -16,6 +18,9 @@
 
 namespace esp {
 
+// 烟闪写内存：实现保留在 sdk/entity.cpp，当前关闭快捷键与运行时调用。
+inline constexpr bool kUtilitySuppressFeatureEnabled = false;
+
 class EspLoop {
 public:
     explicit EspLoop(memory::Process& process);
@@ -28,20 +33,28 @@ public:
     void toggle_skeleton();
     [[nodiscard]] bool skeleton_enabled() const { return skeleton_enabled_; }
 
+#ifndef CS2_ESP_ESP_ONLY
     void toggle_aim();
     [[nodiscard]] bool aim_toggled() const { return aim_toggled_; }
+    [[nodiscard]] int aim_toggle_vk() const { return aim_config_.aim_toggle_vk; }
+#endif
+
+    void toggle_utility_suppress();
+    [[nodiscard]] bool utility_suppressed() const { return utility_suppressed_; }
 
     void toggle_color_picker(render::Overlay& overlay);
     void set_color_picker_visible(render::Overlay& overlay, bool visible);
     void toggle_color_picker_tab();
     [[nodiscard]] bool color_picker_visible() const { return color_picker_visible_; }
-    [[nodiscard]] int aim_toggle_vk() const { return aim_config_.aim_toggle_vk; }
     [[nodiscard]] bool toast_active() const;
 
     void show_hint(std::wstring message, std::chrono::seconds duration = std::chrono::seconds(8));
 
     void poll_runtime_config();
-    [[nodiscard]] const aim::SoftAimConfig& aim_config() const { return aim_config_; }
+
+    [[nodiscard]] bool needs_write_access(bool aim_held) const;
+    [[nodiscard]] bool needs_write_access_from_input() const;
+    [[nodiscard]] bool wants_scheduled_handle_refresh() const;
 
 private:
     void show_mode_toast(std::wstring message);
@@ -53,10 +66,15 @@ private:
 
     memory::Process& process_;
     sdk::EntitySystem entities_;
+#ifndef CS2_ESP_ESP_ONLY
     aim::SoftAimConfig aim_config_{};
+#endif
     bool enabled_{true};
     bool skeleton_enabled_{false};
+#ifndef CS2_ESP_ESP_ONLY
     bool aim_toggled_{false};
+#endif
+    bool utility_suppressed_{false};
     bool color_picker_visible_{false};
     render::CustomColorState custom_color_{};
     bool color_drag_sv_{false};
