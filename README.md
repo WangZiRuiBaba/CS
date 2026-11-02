@@ -21,11 +21,11 @@
 
 | 功能 | 快捷键 | 操作 |
 |------|--------|------|
-| 内存锁（常开） | `Home` | 按一下 **开/关** |
+| 内存锁（常开） | `主页` | 按一下 **开/关** |
 | 软锁（按住生效） | 鼠标 **`XBUTTON1`**（侧键 / 后退键，罗技多为左侧下侧键） | **按住**期间生效 |
 | 连发判定（胸线 + 强 RCS） | **`左键`** 开火 | 按住开火时由软锁逻辑识别连发 |
 
-- `Home` 常开 与 `XBUTTON1` 按住 **任一满足即激活**软锁，也可同时用
+- `主页` 常开 与 `XBUTTON1` 按住 **任一满足即激活**软锁，也可同时用
 - 点射偏头、连发胸线 + RCS，多目标粘性锁定
 - 写内存：`NtWriteVirtualMemory` / `WriteProcessMemory` → `client.dll` 视角（见 `src/aim/soft_aim.cpp`）
 
@@ -48,12 +48,12 @@
 |------|------|
 | `Insert` | 方框透视 |
 | `Page Up` | 骨骼透视 |
-| `Home` | 内存锁常开 |
+| `主页` | 内存锁常开 |
 | `XBUTTON1` | 按住软锁 |
 | `左键` | 开火（连发时改变锁头/RCS 模式） |
 | `End` | 退出 |
 
-Debug 编译带控制台，启动时会打印：`Insert` 方框 · `PageUp` 骨骼 · `Home` 内存锁 · 按住 `XBUTTON1` 软锁 · `End` 退出。
+Debug 编译带控制台，启动时会打印：`Insert` 方框 · `PageUp` 骨骼 · `主页` 内存锁 · 按住 `XBUTTON1` 软锁 · `End` 退出。
 
 ## 性能与安全说明
 
@@ -73,12 +73,7 @@ Debug 编译带控制台，启动时会打印：`Insert` 方框 · `PageUp` 骨�
 
 ## 构建与工具（独立私有仓库 CS2Tools）
 
-本仓库只放 C++ 主程序（`src/`、`sdk/`、`native/`、`CMakeLists.txt`、`CS2.native.sln`）。构建脚本、图形面板、偏移 dump、打包与对外文案全部在私有仓库 **CS2Tools**：
-
-- `build.bat` / `scripts\build.ps1`：一键构建 `build\Release\CS2_ESP.exe`
-- `scripts\build-panel.ps1` / `build-tune.ps1`：出 `build\Release\Panel` / `build\Release\Tune`
-- `tools\cs2-dumper\`：偏移 dump；`release\`：对外文案与打包产物
-
+本仓库只放 C++ 主程序（`src/`、`sdk/`、`native/`、`CMakeLists.txt`、`CS2.native.sln`）。
 CS2Tools 默认找与本仓库并列的 `..\CS`，其它位置用环境变量 `CS2_REPO_ROOT` 指向本仓库根目录。
 
 ## 编译（Visual Studio）
@@ -104,7 +99,7 @@ Debug 配置会定义 `CS2_ESP_CONSOLE`，便于查看附加与开关日志。
 
 1. 启动 CS2，建议先 **离线练习 / 本地 Bot** 测试
 2. 以普通权限运行 `CS2_ESP.exe`（读/写内存失败时可尝试与游戏相同权限）
-3. Debug 版控制台出现 `Attached` 与 `client.dll` 基址后，进局用 `Insert` / `Page Up` / `Home` / 侧键等操作（见上表）
+3. Debug 版控制台出现 `Attached` 与 `client.dll` 基址后，进局用 `Insert` / `Page Up` / `主页` / 侧键等操作（见上表）
 
 ## 窗口查找
 
