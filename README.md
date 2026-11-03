@@ -114,7 +114,7 @@ Debug 配置会定义 `CS2_ESP_CONSOLE`，便于查看附加与开关日志。
 项目完全免费，也不加壳、不联网验证。如果它帮你省了时间，可以扫码赞助一杯咖啡（微信支付，金额随意，备注随便写）：
 
 <p align="center">
-  <img src="docs/donate/wechat-pay.jpg" alt="微信支付收款码" width="300">
+  <img src="docs/donate/sponsor-card.png" alt="微信支付赞赏码（扫码赞助）" width="340">
 </p>
 
 赞助完全自愿，不影响功能与更新。谢绝未成年人、学生党打赏，把钱留着买游戏。
