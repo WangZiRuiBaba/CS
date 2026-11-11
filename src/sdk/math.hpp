@@ -65,10 +65,15 @@ inline float angular_distance(const QAngle& a, const QAngle& b) {
 
 using ViewMatrix = std::array<float, 16>;
 
+inline bool ndc_on_screen(float ndc_x, float ndc_y) {
+    return std::isfinite(ndc_x) && std::isfinite(ndc_y) && std::fabs(ndc_x) <= 2.5f &&
+           std::fabs(ndc_y) <= 2.5f;
+}
+
 inline bool world_to_screen_row(const Vec3& world, Vec2& screen, const ViewMatrix& vm, int width,
                                 int height) {
     const float w = vm[12] * world.x + vm[13] * world.y + vm[14] * world.z + vm[15];
-    if (w < 0.01f)
+    if (w < 0.01f || w > 50000.f)
         return false;
 
     const float x = vm[0] * world.x + vm[1] * world.y + vm[2] * world.z + vm[3];
@@ -77,6 +82,8 @@ inline bool world_to_screen_row(const Vec3& world, Vec2& screen, const ViewMatri
 
     const float ndc_x = x * inv_w;
     const float ndc_y = y * inv_w;
+    if (!ndc_on_screen(ndc_x, ndc_y))
+        return false;
 
     screen.x = (width * 0.5f) + (ndc_x * width * 0.5f);
     screen.y = (height * 0.5f) - (ndc_y * height * 0.5f);
@@ -86,7 +93,7 @@ inline bool world_to_screen_row(const Vec3& world, Vec2& screen, const ViewMatri
 inline bool world_to_screen_col(const Vec3& world, Vec2& screen, const ViewMatrix& vm, int width,
                                 int height) {
     const float w = vm[3] * world.x + vm[7] * world.y + vm[11] * world.z + vm[15];
-    if (w < 0.01f)
+    if (w < 0.01f || w > 50000.f)
         return false;
 
     const float x = vm[0] * world.x + vm[4] * world.y + vm[8] * world.z + vm[12];
@@ -95,6 +102,8 @@ inline bool world_to_screen_col(const Vec3& world, Vec2& screen, const ViewMatri
 
     const float ndc_x = x * inv_w;
     const float ndc_y = y * inv_w;
+    if (!ndc_on_screen(ndc_x, ndc_y))
+        return false;
 
     screen.x = (width * 0.5f) + (ndc_x * width * 0.5f);
     screen.y = (height * 0.5f) - (ndc_y * height * 0.5f);

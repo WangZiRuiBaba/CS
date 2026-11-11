@@ -3,12 +3,15 @@
 #include "license/expiry.hpp"
 #include "memory/process.hpp"
 #include "render/overlay.hpp"
+#include "offsets/offsets.hpp"
 #include "stealth/stealth.hpp"
 
 #include <Windows.h>
+#include <TlHelp32.h>
 
 #include <atomic>
 #include <chrono>
+#include <cwchar>
 #include <random>
 #include <thread>
 
@@ -29,6 +32,50 @@ constexpr auto kStartupPollInterval = std::chrono::milliseconds(50);
 constexpr wchar_t kStartupMsgBoxTitle[] = L"CS2 ESP";
 
 bool is_end_held() { return (GetAsyncKeyState(VK_END) & 0x8000) != 0; }
+
+// On-disk size of the game's client.dll: the cheapest signal that CS2 was updated and
+// the offsets in sdk/offsets/offsets.hpp are stale.
+std::uint64_t client_dll_file_size(DWORD pid) {
+    const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+    if (snap == INVALID_HANDLE_VALUE)
+        return 0;
+
+    MODULEENTRY32W entry{};
+    entry.dwSize = sizeof(entry);
+    std::uint64_t size = 0;
+    if (Module32FirstW(snap, &entry)) {
+        do {
+            if (_wcsicmp(entry.szModule, L"client.dll") != 0)
+                continue;
+            WIN32_FILE_ATTRIBUTE_DATA data{};
+            if (GetFileAttributesExW(entry.szExePath, GetFileExInfoStandard, &data))
+                size = (static_cast<std::uint64_t>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+            break;
+        } while (Module32NextW(snap, &entry));
+    }
+    CloseHandle(snap);
+    return size;
+}
+
+// Warn once per attached client.dll when the game shipped a new build: the ESP would
+// otherwise draw nothing at all and look broken.
+void warn_if_offsets_stale(const memory::Process& process, esp::EspLoop& esp_loop) {
+    static std::uintptr_t checked_base = 0;
+    if (!process.is_attached() || checked_base == process.client_base())
+        return;
+    checked_base = process.client_base();
+
+    const std::uint64_t expected = sdk::offsets::kClientDllSize;
+    if (expected == 0)
+        return;
+    const std::uint64_t size = client_dll_file_size(process.process_id());
+    if (size == 0 || size == expected)
+        return;
+    esp_loop.show_hint(
+        L"CS2 \u5df2\u66f4\u65b0\uff1a\u504f\u79fb\u53ef\u80fd\u8fc7\u671f\uff0c"
+        L"\u8bf7\u8fd0\u884c refresh-offsets.ps1",
+        std::chrono::seconds(12));
+}
 
 void close_startup_message_box() {
     if (HWND hwnd = FindWindowW(nullptr, kStartupMsgBoxTitle))
@@ -209,6 +256,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                 attach_loop(process);
             last_attach_check = now;
         }
+        warn_if_offsets_stale(process, esp_loop);
 
 #ifdef CS2_ESP_RETAIL
         if (now - last_license_check > std::chrono::minutes(1)) {

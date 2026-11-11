@@ -3,6 +3,8 @@
 #include "memory/process.hpp"
 #include "sdk/math.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -44,15 +46,21 @@ inline void reproject_box(EspTarget& t, const ViewMatrix& vm, int screen_w, int 
         t.h = 0.f;
         return;
     }
-    const float height = screen_feet.y - screen_head.y;
-    if (height < 2.f) {
+    const float height = std::fabs(screen_feet.y - screen_head.y);
+    // Same degenerate-box guard as EntitySystem::try_add_enemy_pawn: a pawn at
+    // point-blank range projects to a huge height and would stretch the box
+    // into a screen-wide line.
+    const float max_height = static_cast<float>(screen_h) * 1.5f;
+    if (height < 2.f || height > max_height) {
         t.w = 0.f;
         t.h = 0.f;
         return;
     }
     const float width = height * 0.48f;
-    t.x = screen_head.x - width * 0.5f;
-    t.y = screen_head.y;
+    const float top = (std::min)(screen_head.y, screen_feet.y);
+    const float center_x = (screen_head.x + screen_feet.x) * 0.5f;
+    t.x = center_x - width * 0.5f;
+    t.y = top;
     t.w = width;
     t.h = height;
 }

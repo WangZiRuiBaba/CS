@@ -19,6 +19,9 @@ constexpr int kFallbackEntityScan = 512;
 constexpr int kCasualMaxEnemies = 20;
 constexpr float kMaxDistanceSq = 4000.0f * 4000.0f;
 constexpr float kMinBoxHeight = 2.0f;
+// Reject degenerate boxes: a pawn touching the camera (or a bogus bone read)
+// projects to an absurd height and would be drawn as a full-screen line.
+constexpr float kMaxBoxHeightFactor = 1.5f;
 constexpr float kDefaultHeadOffset = 72.0f;
 constexpr std::uint32_t kInvalidHandle = 0xFFFFFFFFu;
 
@@ -97,6 +100,10 @@ std::optional<ViewMatrix> EntitySystem::view_matrix() const {
 
     ViewMatrix vm{};
     if (!proc_.read_raw(client + offsets::dwViewMatrix, vm.data(), sizeof(vm)))
+        return std::nullopt;
+    // Plain view blocks (wrong dwViewMatrix) have no perspective row — reject them.
+    const float perspective = std::fabs(vm[12]) + std::fabs(vm[13]) + std::fabs(vm[14]);
+    if (!std::isfinite(perspective) || perspective < 1e-5f)
         return std::nullopt;
     return vm;
 }
@@ -363,15 +370,17 @@ bool EntitySystem::try_add_enemy_pawn(std::uintptr_t pawn, std::uintptr_t local,
     if (!world_to_screen(head, screen_head, vm, screen_w, screen_h))
         return false;
 
-    const float height = screen_feet.y - screen_head.y;
-    if (height < kMinBoxHeight)
+    const float height = std::fabs(screen_feet.y - screen_head.y);
+    if (height < kMinBoxHeight || height > static_cast<float>(screen_h) * kMaxBoxHeightFactor)
         return false;
 
     const float width = height * 0.48f;
+    const float top = (std::min)(screen_head.y, screen_feet.y);
+    const float center_x = (screen_head.x + screen_feet.x) * 0.5f;
 
     EspTarget t{};
-    t.x = screen_head.x - width * 0.5f;
-    t.y = screen_head.y;
+    t.x = center_x - width * 0.5f;
+    t.y = top;
     t.w = width;
     t.h = height;
     t.health = *health;
